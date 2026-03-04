@@ -1,0 +1,218 @@
+export function calculateFinancialHealth(transactions) {
+  if (!transactions || transactions.length === 0) {
+    return null;
+  }
+
+  let totalIncome = 0;
+  let totalExpense = 0;
+
+  const monthlyMap = {};
+  const expenseMap = {};
+
+  // 🔹 Aggregate Transactions
+  transactions.forEach((t) => {
+    const date = new Date(t.created_at);
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const key = `${year}-${month}`;
+
+    if (!monthlyMap[key]) {
+      monthlyMap[key] = {
+        income: 0,
+        expense: 0,
+        year,
+        month,
+      };
+    }
+
+    if (t.categories?.type === "income") {
+      totalIncome += t.amount;
+      monthlyMap[key].income += t.amount;
+    } else {
+      totalExpense += t.amount;
+      monthlyMap[key].expense += t.amount;
+
+      const name = t.categories?.name || "Other";
+      expenseMap[name] = (expenseMap[name] || 0) + t.amount;
+    }
+  });
+
+  // 🔹 Sort Months Properly (VERY IMPORTANT)
+  const sortedMonths = Object.values(monthlyMap).sort(
+    (a, b) =>
+      new Date(a.year, a.month) - new Date(b.year, b.month)
+  );
+
+  const monthlyNets = sortedMonths.map(
+    (m) => m.income - m.expense
+  );
+
+  const net = totalIncome - totalExpense;
+
+  const profitMargin =
+    totalIncome > 0 ? (net / totalIncome) * 100 : 0;
+
+  // 🔹 Average Monthly Net
+  const avgMonthlyNet =
+    monthlyNets.length > 0
+      ? monthlyNets.reduce((a, b) => a + b, 0) /
+        monthlyNets.length
+      : 0;
+
+  // 🔹 Runway (only meaningful if burning cash)
+  const runwayMonths =
+    avgMonthlyNet < 0 && net > 0
+      ? Math.abs(net / avgMonthlyNet)
+      : avgMonthlyNet < 0
+      ? 0
+      : 24; // cap positive runway at 24 months for scoring sanity
+
+  // 🔹 Income Growth (last 2 sorted months)
+  let incomeGrowth = 0;
+  if (monthlyNets.length >= 2) {
+    const prev = monthlyNets[monthlyNets.length - 2];
+    const current = monthlyNets[monthlyNets.length - 1];
+
+    if (prev !== 0) {
+      incomeGrowth =
+        ((current - prev) / Math.abs(prev)) * 100;
+    }
+  }
+
+  // 🔹 Expense Concentration
+  let topExpensePercent = 0;
+  if (totalExpense > 0) {
+    Object.values(expenseMap).forEach((val) => {
+      const share = (val / totalExpense) * 100;
+      if (share > topExpensePercent) {
+        topExpensePercent = share;
+      }
+    });
+  }
+
+  // 🔹 Stability (Std Deviation)
+  const mean = avgMonthlyNet;
+
+  const variance =
+    monthlyNets.length > 0
+      ? monthlyNets.reduce(
+          (acc, val) =>
+            acc + Math.pow(val - mean, 2),
+          0
+        ) / monthlyNets.length
+      : 0;
+
+  const volatility = Math.sqrt(variance);
+
+  // 🔹 Scaling
+  const clamp = (num) =>
+    Math.max(0, Math.min(100, num));
+
+  const marginScore = clamp((profitMargin / 40) * 100);
+  const runwayScore = clamp((runwayMonths / 12) * 100);
+  const growthScore = clamp((incomeGrowth + 20) * 2.5);
+  const concentrationScore = clamp(
+    100 - topExpensePercent * 1.5
+  );
+  const stabilityScore = clamp(
+    100 - (volatility / 1000) * 100
+  );
+
+  // 🔹 Weights
+  const weights = {
+    margin: 0.25,
+    runway: 0.25,
+    growth: 0.2,
+    concentration: 0.15,
+    stability: 0.15,
+  };
+
+  const finalScore =
+    marginScore * weights.margin +
+    runwayScore * weights.runway +
+    growthScore * weights.growth +
+    concentrationScore * weights.concentration +
+    stabilityScore * weights.stability;
+
+  const score = Math.round(finalScore);
+
+  // 🔹 Risk Classification
+  let riskLevel = "Low";
+  if (score < 70) riskLevel = "Moderate";
+  if (score < 50) riskLevel = "High";
+  if (score < 30) riskLevel = "Critical";
+
+  // 🔹 Status Label Helper
+  const getStatus = (metricScore) => {
+    if (metricScore >= 75) return "Strong";
+    if (metricScore >= 55) return "Healthy";
+    if (metricScore >= 35) return "Weak";
+    return "Critical";
+  };
+
+  // 🔹 Breakdown Object
+  const breakdown = [
+    {
+      name: "Profit Margin",
+      rawValue: Number(profitMargin.toFixed(2)),
+      score: Math.round(marginScore),
+      weight: weights.margin,
+      contribution: Math.round(
+        marginScore * weights.margin
+      ),
+      status: getStatus(marginScore),
+    },
+    {
+      name: "Runway",
+      rawValue: Number(runwayMonths.toFixed(2)),
+      score: Math.round(runwayScore),
+      weight: weights.runway,
+      contribution: Math.round(
+        runwayScore * weights.runway
+      ),
+      status: getStatus(runwayScore),
+    },
+    {
+      name: "Income Growth",
+      rawValue: Number(incomeGrowth.toFixed(2)),
+      score: Math.round(growthScore),
+      weight: weights.growth,
+      contribution: Math.round(
+        growthScore * weights.growth
+      ),
+      status: getStatus(growthScore),
+    },
+    {
+      name: "Expense Concentration",
+      rawValue: Number(topExpensePercent.toFixed(2)),
+      score: Math.round(concentrationScore),
+      weight: weights.concentration,
+      contribution: Math.round(
+        concentrationScore *
+          weights.concentration
+      ),
+      status: getStatus(concentrationScore),
+    },
+    {
+      name: "Stability",
+      rawValue: Number(volatility.toFixed(2)),
+      score: Math.round(stabilityScore),
+      weight: weights.stability,
+      contribution: Math.round(
+        stabilityScore * weights.stability
+      ),
+      status: getStatus(stabilityScore),
+    },
+  ];
+
+  return {
+    score,
+    riskLevel,
+    profitMargin: Number(profitMargin.toFixed(2)),
+    runwayMonths: Number(runwayMonths.toFixed(2)),
+    incomeGrowth: Number(incomeGrowth.toFixed(2)),
+    topExpensePercent: Number(topExpensePercent.toFixed(2)),
+    volatility: Number(volatility.toFixed(2)),
+    breakdown,
+  };
+}

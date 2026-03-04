@@ -1,35 +1,52 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { Routes, Route } from "react-router-dom";
+import { useBusiness } from "./context/BusinessContext";
+import { useState } from "react";
 
-function App() {
-  const [count, setCount] = useState(0)
+import Sidebar from "./components/Sidebar";
+import Dashboard from "./pages/Dashboard";
+import Analytics from "./pages/Analytics";
+import Forecast from "./pages/Forecast";
+import Advisor from "./pages/Advisor"; // ✅ NEW
+import Auth from "./pages/Auth";
+
+export default function App() {
+  const { session, loading } = useBusiness();
+  const [collapsed, setCollapsed] = useState(false);
+
+  if (loading) return <div>Loading...</div>;
+
+  if (!session) {
+    return <Auth />;
+  }
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
-}
+  <div
+  style={{
+    display: "flex",
+    minHeight: "100vh",
+    background: "#0B1120",
+    color: "#e2e8f0",
+    width: "100vw",        // ← ADD THIS
+    overflow: "hidden",    // ← ADD THIS
+  }}
+>
+    <Sidebar collapsed={collapsed} toggleSidebar={() => setCollapsed(!collapsed)} />
 
-export default App
+    <div
+  style={{
+    flex: 1,
+    minWidth: 0,          // ← THIS FIXES RECHARTS
+    padding: "40px",
+    transition: "all 0.3s ease",
+  }}
+>
+      <Routes>
+        <Route path="/" element={<Dashboard />} />
+        <Route path="/analytics" element={<Analytics />} />
+        <Route path="/forecast" element={<Forecast />} />
+        <Route path="/advisor" element={<Advisor />} />
+      </Routes>
+    </div>
+  </div>
+);
+}

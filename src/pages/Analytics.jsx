@@ -1,0 +1,349 @@
+import { useEffect, useState } from "react";
+import { supabase } from "../supabaseClient";
+import { useBusiness } from "../context/BusinessContext";
+
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  LineChart,
+  Line,
+  Legend,
+} from "recharts";
+
+export default function Analytics() {
+  const { businessId, loading } = useBusiness();
+  const [transactions, setTransactions] = useState([]);
+  const [filter, setFilter] = useState("all");
+
+  useEffect(() => {
+    if (!businessId) return;
+    fetchTransactions();
+  }, [businessId]);
+
+  async function fetchTransactions() {
+    const { data, error } = await supabase
+      .from("transactions")
+      .select("*, categories(name, type)")
+      .eq("business_id", businessId)
+      .order("created_at", { ascending: true });
+
+    if (!error) setTransactions(data);
+  }
+
+  if (loading) return <div>Loading...</div>;
+
+  if (!transactions.length) {
+  return <p>No financial data yet.</p>
+}
+
+  const now = new Date();
+
+  // -----------------------
+  // FILTER
+  // -----------------------
+
+  const filteredTransactions = transactions.filter((t) => {
+    if (filter === "all") return true;
+
+    const date = new Date(t.created_at);
+
+    if (filter === "thisMonth") {
+      return (
+        date.getMonth() === now.getMonth() &&
+        date.getFullYear() === now.getFullYear()
+      );
+    }
+
+    if (filter === "lastMonth") {
+      const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      return (
+        date.getMonth() === lastMonth.getMonth() &&
+        date.getFullYear() === lastMonth.getFullYear()
+      );
+    }
+
+    return true;
+  });
+
+  // -----------------------
+  // INCOME / EXPENSE
+  // -----------------------
+
+  const income = filteredTransactions
+    .filter((t) => t.categories?.type === "income")
+    .reduce((acc, curr) => acc + curr.amount, 0);
+
+  const expense = filteredTransactions
+    .filter((t) => t.categories?.type === "expense")
+    .reduce((acc, curr) => acc + curr.amount, 0);
+
+  const netProfit = income - expense;
+  const profitMargin =
+    income > 0 ? ((netProfit / income) * 100).toFixed(1) : 0;
+
+  // -----------------------
+  // MONTH-OVER-MONTH INCOME GROWTH
+  // -----------------------
+
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
+  const lastMonthDate = new Date(currentYear, currentMonth - 1, 1);
+
+  let thisMonthIncome = 0;
+  let lastMonthIncome = 0;
+
+  transactions.forEach((t) => {
+    const date = new Date(t.created_at);
+    if (t.categories?.type !== "income") return;
+
+    if (
+      date.getMonth() === currentMonth &&
+      date.getFullYear() === currentYear
+    ) {
+      thisMonthIncome += t.amount;
+    }
+
+    if (
+      date.getMonth() === lastMonthDate.getMonth() &&
+      date.getFullYear() === lastMonthDate.getFullYear()
+    ) {
+      lastMonthIncome += t.amount;
+    }
+  });
+
+  const incomeGrowth =
+    lastMonthIncome > 0
+      ? (
+          ((thisMonthIncome - lastMonthIncome) / lastMonthIncome) *
+          100
+        ).toFixed(1)
+      : 0;
+
+  // -----------------------
+  // CATEGORY BREAKDOWN
+  // -----------------------
+
+  const categoryMap = {};
+  filteredTransactions.forEach((t) => {
+    const name = t.categories?.name || "Other";
+    categoryMap[name] = (categoryMap[name] || 0) + t.amount;
+  });
+
+  const pieData = Object.keys(categoryMap).map((key) => ({
+    name: key,
+    value: categoryMap[key],
+  }));
+
+  const COLORS = ["#00ff9d", "#ff4d4d", "#4db8ff", "#ffaa00", "#aa66ff"];
+
+  // -----------------------
+  // TOP EXPENSE CATEGORY
+  // -----------------------
+
+  let expenseCategoryMap = {};
+
+  filteredTransactions.forEach((t) => {
+    if (t.categories?.type !== "expense") return;
+    const name = t.categories?.name || "Other";
+    expenseCategoryMap[name] =
+      (expenseCategoryMap[name] || 0) + t.amount;
+  });
+
+  let topExpenseCategory = "None";
+  let topExpenseAmount = 0;
+
+  Object.entries(expenseCategoryMap).forEach(([name, value]) => {
+    if (value > topExpenseAmount) {
+      topExpenseAmount = value;
+      topExpenseCategory = name;
+    }
+  });
+
+  // -----------------------
+  // MONTHLY TREND (LAST 6 MONTHS)
+  // -----------------------
+
+  function formatMonth(date) {
+    return date.toLocaleString("default", {
+      month: "short",
+      year: "numeric",
+    });
+  }
+
+  const last6Months = [];
+
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+
+    last6Months.push({
+      key: `${d.getFullYear()}-${d.getMonth()}`,
+      label: formatMonth(d),
+      income: 0,
+      expense: 0,
+    });
+  }
+
+  transactions.forEach((t) => {
+    const date = new Date(t.created_at);
+    const key = `${date.getFullYear()}-${date.getMonth()}`;
+
+    const monthObj = last6Months.find((m) => m.key === key);
+    if (!monthObj) return;
+
+    if (t.categories?.type === "income") {
+      monthObj.income += t.amount;
+    } else {
+      monthObj.expense += t.amount;
+    }
+  });
+
+  const lineData = last6Months.map(({ label, income, expense }) => ({
+    month: label,
+    income,
+    expense,
+  }));
+
+  const barData = [
+    { name: "Income", value: income },
+    { name: "Expense", value: expense },
+  ];
+
+  // -----------------------
+  // UI
+  // -----------------------
+
+  return (
+    <div style={{ padding: "40px" }}>
+      <h1 style={{ fontSize: "32px", marginBottom: "30px" }}>
+        Analytics Overview
+      </h1>
+
+      {/* KPI CARDS */}
+      <div style={kpiContainer}>
+        <div style={kpiCard}>
+          <p>Net Profit Margin</p>
+          <h2 style={{ color: profitMargin >= 0 ? "#00ff9d" : "#ff4d4d" }}>
+            {profitMargin}%
+          </h2>
+        </div>
+
+        <div style={kpiCard}>
+          <p>Income Growth (MoM)</p>
+          <h2 style={{ color: incomeGrowth >= 0 ? "#00ff9d" : "#ff4d4d" }}>
+            {incomeGrowth}%
+          </h2>
+        </div>
+
+        <div style={kpiCard}>
+          <p>Top Expense Category</p>
+          <h2>
+            {topExpenseCategory} (₹ {topExpenseAmount})
+          </h2>
+        </div>
+      </div>
+
+      {/* FILTER */}
+      <div style={{ marginBottom: "30px" }}>
+        <select
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          style={{ padding: "8px", borderRadius: "6px" }}
+        >
+          <option value="all">All Time</option>
+          <option value="thisMonth">This Month</option>
+          <option value="lastMonth">Last Month</option>
+        </select>
+      </div>
+
+      {/* CHARTS */}
+      <div style={{ display: "flex", gap: "60px", flexWrap: "wrap" }}>
+        <div style={{ width: "100%", maxWidth: "600px", height: "350px" }}>
+          <h3>Income vs Expense</h3>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={barData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" />
+              <YAxis />
+              <Tooltip />
+              <Bar dataKey="value" fill="#4db8ff" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
+        <div style={{ width: "100%", maxWidth: "600px", height: "350px" }}>
+          <h3>Category Breakdown</h3>
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={pieData}
+                dataKey="value"
+                nameKey="name"
+                outerRadius={120}
+                label
+              >
+                {pieData.map((entry, index) => (
+                  <Cell
+                    key={`cell-${index}`}
+                    fill={COLORS[index % COLORS.length]}
+                  />
+                ))}
+              </Pie>
+              <Tooltip />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* MONTHLY TREND */}
+      <div style={{ marginTop: "60px", height: "400px" }}>
+        <h3>Monthly Income vs Expense Trend (Last 6 Months)</h3>
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={lineData}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="month" />
+            <YAxis />
+            <Tooltip />
+            <Legend />
+            <Line
+              type="monotone"
+              dataKey="income"
+              stroke="#00ff9d"
+              strokeWidth={3}
+              dot={{ r: 5 }}
+            />
+            <Line
+              type="monotone"
+              dataKey="expense"
+              stroke="#ff4d4d"
+              strokeWidth={3}
+              dot={{ r: 5 }}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}
+
+const kpiContainer = {
+  display: "flex",
+  gap: "20px",
+  marginBottom: "40px",
+  flexWrap: "wrap",
+};
+
+const kpiCard = {
+  background: "#111827",
+  padding: "20px",
+  borderRadius: "10px",
+  minWidth: "220px",
+  flex: 1,
+};

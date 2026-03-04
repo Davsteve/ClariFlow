@@ -1,0 +1,111 @@
+import { useState } from "react";
+import { supabase } from "../supabaseClient";
+
+export default function Auth() {
+  const [email, setEmail] = useState("");
+  const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function signIn() {
+  if (!email) return;
+
+  setLoading(true);
+  setMessage("");
+
+  const { error } = await supabase.auth.signInWithOtp({
+    email,
+    options: {
+      emailRedirectTo: "http://localhost:5173",
+    },
+  });
+
+  if (error) {
+    setMessage("Error sending magic link.");
+  } else {
+    setMessage("Check your email. We've sent you a login link.");
+  }
+
+  setLoading(false);
+}
+
+  return (
+    <div style={styles.container}>
+      <div style={styles.card}>
+        <h2 style={{ marginBottom: "10px" }}>BI SaaS</h2>
+<p style={{ opacity: 0.7, marginBottom: "25px" }}>
+  Financial Intelligence for Founders
+</p>
+
+<h3 style={{ marginBottom: "15px" }}>
+  Enter your email to continue
+</h3>
+
+        <input
+          type="email"
+          placeholder="Enter your email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          style={styles.input}
+        />
+
+        <button
+  onClick={signIn}
+  disabled={loading}
+  style={styles.button}
+>
+  {loading ? "Sending..." : "Continue"}
+</button>
+          {message && (
+  <p style={{ marginTop: "12px", opacity: 0.8 }}>
+    {message}
+  </p>
+)}
+
+        <p
+  style={{
+    fontSize: "13px",
+    opacity: 0.6,
+    marginTop: "12px",
+  }}
+>
+  We'll send a secure login link to your inbox. No password required.
+</p>
+      </div>
+    </div>
+  );
+}
+
+const styles = {
+  container: {
+    height: "100vh",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    background: "linear-gradient(135deg, #0f2027, #203a43, #2c5364)",
+    color: "white",
+  },
+  card: {
+    background: "rgba(255,255,255,0.05)",
+    padding: "40px",
+    borderRadius: "15px",
+    backdropFilter: "blur(10px)",
+    width: "350px",
+    textAlign: "center",
+  },
+  input: {
+    width: "100%",
+    padding: "12px",
+    marginBottom: "20px",
+    borderRadius: "8px",
+    border: "none",
+  },
+  button: {
+    width: "100%",
+    padding: "12px",
+    borderRadius: "8px",
+    border: "none",
+    background: "#3b82f6",
+    color: "white",
+    cursor: "pointer",
+  },
+};
