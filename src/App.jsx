@@ -2,7 +2,7 @@ import { Routes, Route } from "react-router-dom";
 import { useBusiness } from "./context/BusinessContext";
 import { useState } from "react";
 
-import Sidebar from "./components/SidebarTemp";
+import Sidebar from "./components/Sidebar";
 import Dashboard from "./pages/Dashboard";
 import Analytics from "./pages/Analytics";
 import Forecast from "./pages/Forecast";
