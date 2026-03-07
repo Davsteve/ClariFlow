@@ -26,6 +26,10 @@ export default function Dashboard() {
   const [modalOpen, setModalOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [showBreakdown, setShowBreakdown] = useState(false);
+  const [showAll, setShowAll] = useState(false);
+  const visibleTransactions = showAll
+  ? transactions
+  : transactions.slice(0, 10);
 
   useEffect(() => {
     document.body.style.overflow = modalOpen ? "hidden" : "auto";
@@ -349,9 +353,15 @@ const volatilityColor =
       <Card>
         <h2>Transactions</h2>
 
-        {transactions.map((t) => (
+        {visibleTransactions.map((t) => (
           <div key={t.id} style={styles.transactionRow}>
-            <span>{t.categories?.name}</span>
+            <div>
+  <div>{t.categories?.name}</div>
+  <div style={{ fontSize: "12px", opacity: 0.6 }}>
+    {new Date(t.created_at).toLocaleDateString()}
+  </div>
+</div>
+
 
             <div style={{ display: "flex", gap: "15px" }}>
               <span
@@ -375,6 +385,23 @@ const volatilityColor =
           </div>
         ))}
       </Card>
+      {transactions.length > 10 && (
+  <div style={{ textAlign: "center", marginTop: "10px" }}>
+    <button
+      onClick={() => setShowAll(!showAll)}
+      style={{
+        padding: "6px 12px",
+        background: "#0b1120",
+        border: "1px solid #1e293b",
+        borderRadius: "6px",
+        color: "#e2e8f0",
+        cursor: "pointer"
+      }}
+    >
+      {showAll ? "Show Less" : "Show More"}
+    </button>
+  </div>
+)}
 
       {/* MODAL */}
       {modalOpen && (
