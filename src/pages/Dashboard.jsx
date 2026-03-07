@@ -158,7 +158,7 @@ const volatilityColor =
 
   return (
     <div>
-      <h1 style={styles.title}>Business Intelligence Dashboard</h1>
+      <h1 style={styles.title}>ClariFlow Dashboard</h1>
 
       <button style={styles.addButton} onClick={() => setModalOpen(true)}>
         + Add Transaction

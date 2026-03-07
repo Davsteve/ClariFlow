@@ -31,9 +31,9 @@ export default function Auth() {
   return (
     <div style={styles.container}>
       <div style={styles.card}>
-        <h2 style={{ marginBottom: "10px" }}>BI SaaS</h2>
+        <h2 style={{ marginBottom: "10px" }}>ClariFlow</h2>
 <p style={{ opacity: 0.7, marginBottom: "25px" }}>
-  Financial Intelligence for Founders
+  Simplifying Cash Flow
 </p>
 
 <h3 style={{ marginBottom: "15px" }}>

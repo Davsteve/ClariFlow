@@ -50,7 +50,7 @@ export default function Sidebar({ collapsed, toggleSidebar }) {
             marginBottom: "50px",
           }}
         >
-          BI SaaS
+          <h1 style={{letterSpacing:"-1px"}}>Clariflow</h1>
         </h2>
       )}
 
