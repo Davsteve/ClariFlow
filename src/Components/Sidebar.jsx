@@ -4,16 +4,15 @@ export default function Sidebar({ collapsed, toggleSidebar }) {
   const location = useLocation();
 
   const menuItems = [
-    { name: "Dashboard", path: "/" },
-    { name: "Analytics", path: "/analytics" },
-    { name: "Forecast", path: "/forecast" },
-    { name: "AI Advisor", path: "/advisor" },
-  ];
+ { name: "Dashboard", path: "/", icon: "📊" },
+ { name: "Analytics", path: "/analytics", icon: "📈" },
+ { name: "Forecast", path: "/forecast", icon: "🔮" },
+ { name: "AI Advisor", path: "/advisor", icon: "🤖" }
+];
 
   return (
   <div
-    onClick={!collapsed ? toggleSidebar : undefined}
-    style={{
+style={{
       width: collapsed ? "80px" : "240px",
       flexShrink: 0,
       transition: "width 0.3s ease",
@@ -38,7 +37,7 @@ export default function Sidebar({ collapsed, toggleSidebar }) {
           userSelect: "none",
         }}
       >
-        ⋮
+        ☰
       </div>
 
       {/* LOGO */}
@@ -71,20 +70,31 @@ export default function Sidebar({ collapsed, toggleSidebar }) {
             <Link
               key={item.path}
               to={item.path}
+
+              onMouseEnter={(e) => {
+  if (!isActive) e.currentTarget.style.background = "rgba(255,255,255,0.04)";
+}}
+onMouseLeave={(e) => {
+  if (!isActive) e.currentTarget.style.background = "transparent";
+}}
+
               style={{
-                textDecoration: "none",
-                padding: collapsed ? "10px" : "12px 15px",
-                borderRadius: "12px",
-                color: isActive ? "#00bfff" : "#94a3b8",
-                background: isActive
-                  ? "rgba(0,191,255,0.08)"
-                  : "transparent",
-                transition: "all 0.2s ease",
-                textAlign: collapsed ? "center" : "left",
-                fontSize: collapsed ? "18px" : "15px",
-              }}
+  display: "flex",
+  alignItems: "center",
+  gap: "12px",
+  padding: collapsed ? "12px" : "12px 16px",
+  borderRadius: "10px",
+  textDecoration: "none",
+  color: isActive ? "#38bdf8" : "#94a3b8",
+  background: isActive ? "rgba(56,189,248,0.12)" : "transparent",
+  transition: "all 0.2s ease"
+}}
+
             >
-              {collapsed ? item.name[0] : item.name}
+              <>
+  <span style={{ fontSize: "18px" }}>{item.icon}</span>
+  {!collapsed && item.name}
+</>
             </Link>
           );
         })}
