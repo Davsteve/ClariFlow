@@ -43,34 +43,36 @@ style={{
 
       {/* LOGO */}
       <div
-style={{
-marginBottom: "40px",
-display: "flex",
-alignItems: "center",
-gap: "10px"
-}}
+  style={{
+    marginBottom: "40px",
+    display: "flex",
+    alignItems: "center",
+    gap: "12px",
+    paddingLeft: collapsed ? "4px" : "0"
+  }}
 >
-<img
-src={logo}
-alt="Clariflow"
-style={{
-width: collapsed ? "30px" : "36px",
-height: collapsed ? "30px" : "36px"
-}}
-/>
+  <img
+    src={logo}
+    alt="Clariflow"
+    style={{
+      width: collapsed ? "32px" : "40px",
+      height: "auto",
+      objectFit: "contain"
+    }}
+  />
 
-{!collapsed && (
-<span
-style={{
-fontWeight: "700",
-fontSize: "20px",
-color: "#f8fafc",
-letterSpacing: "-1px"
-}}
->
-Clariflow
-</span>
-)}
+  {!collapsed && (
+    <span
+      style={{
+        fontWeight: "700",
+        fontSize: "20px",
+        color: "#f8fafc",
+        letterSpacing: "-0.5px"
+      }}
+    >
+      Clariflow
+    </span>
+  )}
 </div>
 
       {/* MENU */}
